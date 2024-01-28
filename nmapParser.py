@@ -34,12 +34,12 @@ class ccolors:
 def initFiles(targetName):
     # Create the files if they do not exist yet 
     # Nmap output file
-    print(ccolors.OKRED + "[+] Creating raw Nmap output file for " + ccolors.ENDC + targetName)
+    print(ccolors.OKRED + "[+] Creating raw Nmap output file" + ccolors.ENDC)
     nmapRaw = open(("/tmp/"+targetName+".nmap"), "a")
     nmapRaw.close() 
 
     # Parsed report file
-    print(ccolors.OKRED + "[+] Creating parsed Nmap output file for " + ccolors.ENDC + targetName)
+    print(ccolors.OKRED + "[+] Creating parsed Nmap output file" + ccolors.ENDC)
     nmapRep = open("/tmp/" + targetName + ".report", "a")
     nmapRep.close() 
 
@@ -59,32 +59,27 @@ def chkTargetFile():
 
 def nmapScan(scanTarget):
     # Run the Nmap scan 
-    print(ccolors.OKRED + "[+] Running Nmap scan on " + ccolors.ENDC + scanTarget)
+    print(ccolors.OKRED + "[+] Running Nmap scan" + ccolors.ENDC)
     nmap = subprocess.run(["nmap","-sC", "-sV", scanTarget], capture_output=True, text=True)
 
     # Open the raw Nmap output file and store the data to be parsed
-    #print(ccolors.OKRED + "[+] Reading raw Nmap output..." + ccolors.ENDC)
-    print(ccolors.OKRED + "[+] Reading raw Nmap output for " + ccolors.ENDC +  scanTarget)
+    print(ccolors.OKRED + "[+] Reading raw Nmap output" + ccolors.ENDC)
     nmapOut = open(("/tmp/" + scanTarget + ".nmap"), "w")
     nmapOut.write(nmap.stdout)
     nmapOut.close()
    
     # Open the parsed report file for writing
     nmapPar = open(("/tmp/" + scanTarget + ".report"), "w")
-    #nmapPar = open(nmapRep, "w")
 
     # Read a line from the output string and write it to the console
     # and parsed output file
-    print(ccolors.OKRED + "[+] Parsing and writing formatted Nmap output for " + ccolors.ENDC + scanTarget)
+    print(ccolors.OKRED + "[+] Parsing and writing formatted Nmap output" + ccolors.ENDC)
     with open(("/tmp/" + scanTarget + ".nmap") ,"r") as nmap_output:
         for linex in nmap_output:
             
             if("Nmap scan report" in linex):
-                #print(" ")
                 nmapPar.write(" \n")
-                #print(ip_ptrn.search(linex).group())
                 nmapPar.write(ip_ptrn.search(linex).group() + "\n")
-                #print("-" * 20)
                 nmapPar.write("-" * 20 + "\n")
             else:
                 if("/tcp" in linex):
@@ -94,20 +89,18 @@ def nmapScan(scanTarget):
                     print(ccolors.OKBLUE + linex.split()[0] + ccolors.ENDC + ccolors.OKGREEN + ": " + linex.split()[2] + ", " + linex[30:-1] + version + ccolors.ENDC)
                     nmapPar.write(linex.split()[0] + ", " + linex.split()[2] + ", " + linex[30:-1] + version + "\n")
                     ports.append(linex.split()[0].split("/")[0])
-    print(" ")
-    print(" ")
     nmap_output.close()
     nmapPar.close()
 
-def runTests(portList):
-    # This function runs through the list of discovered ports
-    # Each port associated with preconfigured commands will trigger
-    # a call to a subroutine to either run or, more likely, build 
-    # a script that can be run
-    for portx in portList:
-        print("testing port " + portx)
-        if (portx == "80") or (portx == "443"):
-            testHTTP(portx)
+def runTests(targ):
+    print(ccolors.OKRED + "[+] Generating commands script " + ccolors.ENDC + targ)
+    with open(("/tmp/" + targ + ".report") ,"r") as nmap_report:
+        for linex in nmap_report:
+            if("/tcp" in linex):
+                print(linex.split("/")[0])
+        nmap_report.close()        
+    print("--------------------------------------")
+    print(" ")
 
 def readTargets(targFile, targList):
     with open(targFile,"r") as tFile:
@@ -151,6 +144,8 @@ def main():
 
         initFiles(targetDom) # Initialize files, clear out existing files and create empty ones
         nmapScan(targetDom) # Nmap scan the targets
+
+        runTests(targetDom)
 
     exit()
 
