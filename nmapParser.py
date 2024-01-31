@@ -107,10 +107,6 @@ def readTargets(targFile, targList):
         for linex in tFile:
             targetList.append(linex.rstrip())
 
-
-def testHTTP(httpPort):
-    print(ccolors.OKRED + "\t[+] Running http/s scan on "+ ccolors.OKBLUE + target+":"+httpPort + ccolors.ENDC + "\n")
-
 def printBanner():
     banner = ccolors.G0 + "                _        __  __             \n"
     banner += ccolors.G1 + "     /\        | |      |  \/  |           \n" 
@@ -121,11 +117,13 @@ def printBanner():
     banner += ccolors.G6 + "                                     | |    \n"
     banner += ccolors.G7 + "                                     |_|    \n"
     banner += ccolors.OKGREEN + "                                      v0.1        \n" + ccolors.ENDC
-
     print(banner)
 
+def printHeader(name):
+    print("------------ " + name + " ------------")
+
 def main():
-    subprocess.run(["clear"])
+    subprocess.run(["clear"]) # Clear the screen
 
     printBanner() # Can't not have an ASCII art banner
 
@@ -142,17 +140,15 @@ def main():
         if(protoPrefixS.search(xTarget)):
             targetDom = (xTarget[8:])
 
+        printHeader(xTarget)
+
         initFiles(targetDom) # Initialize files, clear out existing files and create empty ones
+
         nmapScan(targetDom) # Nmap scan the targets
 
         runTests(targetDom)
 
     exit()
-
-    print("\n" + ("-" * 20) + "\n")
-    print(ccolors.OKRED + "\n[+] Starting individual port tests...\n" + ccolors.ENDC)
-
-    runTests(ports)
     
 if __name__ == '__main__':
     main()
