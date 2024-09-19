@@ -1,0 +1,37 @@
+import threading
+import os
+import time
+import subprocess
+import concurrent.futures
+
+def pingHost(ipAddx, pingFree, pingFound):
+    output = subprocess.run(["ping", "-n", "1", "-w", "100", ipAddx], stdout=subprocess.PIPE)
+    if str(output).find("Lost = 0") >= 0:
+        pingFound.append(ipAddx)
+    else:
+        pingFree.append(ipAddx)
+
+if __name__ == "__main__":
+    start = time.time()
+    subnet = "192.168.1."
+    hosts = range(1,255)
+    pingFound = []
+    pingFree = []
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_ping = {executor.submit(pingHost, (subnet+str(host)), pingFree, pingFound): host for host in hosts}
+        for future in concurrent.futures.as_completed(future_to_ping):
+            host = future_to_ping[future]
+            try:
+                data = future.result()
+            except Exception as e:
+                print('%s generated an exception: %s' % (host, e))
+
+    end = time.time()
+    print('Time taken in seconds -', end - start)
+
+    print("IPs in use: ")
+    print(pingFound)
+
+    print("Free IPs: ")
+    print(pingFree)
