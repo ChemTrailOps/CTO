@@ -20,7 +20,7 @@ args = vars(parser.parse_args())
 
 # Test the user input parameters for validity, is the first host less than the last,
 # does the subnet contain valid octets. Output warninigs and stop execution
-def parmChecks(first, last, octets):
+def parmChecks(first, last, subnet):
     if(first >= last) or (first < 0) or (last > 255):
         print('[!!!] The first IP in the range (-f) should be greater than zero but less than the last IP value')
         print('      the last IP in the range (-l) should be less than 255 but greater than the first IP value')   
@@ -28,7 +28,9 @@ def parmChecks(first, last, octets):
         quit()
 
     #if there is not exactly 3 octets, there's something wrong with the formatting
+    octets = subnet.split(".")
     if(len(octets)!= 3):
+        print(octets)
         print('[!!!] Please check the format of the subnet parameter (-s), there are too many')
         print('      or too few octets or the there is an extra dot separator')
         print('      => an example would be -s 192.168.10, three octets and two dots.')
@@ -57,7 +59,6 @@ def pingHost(ipAddx, tcpFree, tcpFound):
 
 # Scan ports in a list using multiple threads
 def scan_ports(ip, ports, tcpFree, tcpFound):
-    #print("Now processing " + ip)
     threads = []
     for port in ports:
         thread = threading.Thread(target=scan_port, args=(ip, port, ipFree, ipFound))
@@ -74,11 +75,12 @@ def scan_port(ip, port, ipFree, ipFound):
         sock.settimeout(1)
         result = sock.connect_ex((ip, port))
         if result == 0:
-            tcpFound.append(ip)    
+            tcpFound.append(ip)
+        else:
+            tcpFree.append(ip)
         sock.close()
     except Exception as e:
         print(f"Error scanning port {port}: {e}")
-    tcpFree.append(ip)
     
 if __name__ == "__main__":
     start = time.time()     #for checking the amount of time a scan takes
