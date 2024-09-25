@@ -7,9 +7,8 @@ import subprocess
 import concurrent.futures
 import socket
 import argparse
-import re
 
-parser = argparse.ArgumentParser(description='Scan a network for unused IP addresses')
+parser = argparse.ArgumentParser(prog='Annoyed IP Scanner', description='Scan a network for unused IP addresses')
 parser.add_argument('-s', help='Subnet in the form of A.B.C', required=True)
 parser.add_argument('-f', help='Starting node octet, ex: 110 (default is 1)', default=1, required=False)
 parser.add_argument('-l', help='Ending node octet, ex: 155 (default is 255', default=255,  required=False)
@@ -21,7 +20,7 @@ args = vars(parser.parse_args())
 # Test the user input parameters for validity, is the first host less than the last,
 # does the subnet contain valid octets. Output warninigs and stop execution
 def parmChecks(first, last, subnet):
-    if(first >= last) or (first < 0) or (last > 255):
+    if(first > last) or (first < 0) or (last > 255):
         print('[!!!] The first IP in the range (-f) should be greater than zero but less than the last IP value')
         print('      the last IP in the range (-l) should be less than 255 but greater than the first IP value')   
         print('      please check your -f and -l values')
@@ -42,7 +41,7 @@ def parmChecks(first, last, subnet):
     octet1 = int(octets[1])
     octet2 = int(octets[2])
 
-    if (octet0 < 1 or octet0 > 255) or (octet1 < 1 or octet1 > 255) or (octet1 < 2 or octet2 > 255):
+    if (octet0 < 1 or octet0 > 255) or (octet1 < 1 or octet1 > 255) or (octet2 < 1 or octet2 > 255):
         print('[!!!] Please check the format of the subnet parameter (-s)')
         print('      one or more octets is out of bounds, none may be less')
         print('      than zero or greater than 255.') 
@@ -50,18 +49,18 @@ def parmChecks(first, last, subnet):
 
 # Pings the host with one ICMP packet, if the text "Lost = 0" is present, the IP is added to the found list
 # otherwise it's added to the free list
-def pingHost(ipAddx, tcpFree, tcpFound):
+def pingHost(ipAddx, pingFree, pingFound):
     output = subprocess.run(["ping", "-n", "1", "-w", "100", ipAddx], stdout=subprocess.PIPE) 
     if str(output).find("Lost = 0") >= 0:
-        ipFound.append(ipAddx)
+        pingFound.append(ipAddx)
     else:
-        ipFree.append(ipAddx)
+        pingFree.append(ipAddx)
 
 # Scan ports in a list using multiple threads
 def scan_ports(ip, ports, tcpFree, tcpFound):
     threads = []
     for port in ports:
-        thread = threading.Thread(target=scan_port, args=(ip, port, ipFree, ipFound))
+        thread = threading.Thread(target=scan_port, args=(ip, port, tcpFound))
         threads.append(thread)
         thread.start()
 
@@ -69,28 +68,60 @@ def scan_ports(ip, ports, tcpFree, tcpFound):
         thread.join()
 
 # Function to scan a single port
-def scan_port(ip, port, ipFree, ipFound):
+def scan_port(ip, port, tcpFound):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
         result = sock.connect_ex((ip, port))
         if result == 0:
             tcpFound.append(ip)
-        else:
-            tcpFree.append(ip)
         sock.close()
     except Exception as e:
         print(f"Error scanning port {port}: {e}")
-    
+
+
+##################################################
+#   Functions using a "return" value
+##################################################
+# Scan ports in a list using multiple threads
+def scan_ports_r(ip, ports, tcpFree, tcpFound):
+    print("Testing " + ip + "...")
+    result = 1
+    threads = []
+    for port in ports:
+        thread = threading.Thread(target=scan_port_r, args=(result, ip, port, tcpFound))
+        threads.append(thread)
+        thread.start()
+        thread.join()
+        if(result == 0):
+            break
+
+# Function to scan a single port
+def scan_port_r(r, ip, port, tcpFound):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.1)
+        result = sock.connect_ex((ip, port))
+        if result == 0:
+            r = 0
+            if ip not in tcpFound:
+                tcpFound.append(ip)
+        else:
+            r = 1
+        sock.close()
+    except Exception as e:
+        print(f"Error scanning port {port}: {e}")
+##################################################
+#   Functions using a "return" value
+##################################################
+
 if __name__ == "__main__":
     start = time.time()     #for checking the amount of time a scan takes
     subnet = args['s']      #the first three octets of an address separated with dots (1.2.3)
     first = int(args['f'])  #the first host octet to start with
     last = int(args['l'])   #the last host octet to end with
-    ipFound = []            #for recording found IPs with ping
-    ipFree = []             #for recording potentially free IPs with ping
-    tcpFound = []           #for recording found IPs with tcp connection 
-    tcpFree = []            #for recording potentially free IPs with tcp connection
+    ipFound = []            #for recording found IPs
+    ipFree = []             #for recording potentially free IPs
     portsToScan = []        #the list of ports to scan 
 
     parmChecks(first, last, subnet) #check the input parameters, ensure they're all in bounds
@@ -124,8 +155,10 @@ if __name__ == "__main__":
     print("[+]Ping sweep complete")
     
     print("[+]Checking " + str(len(ipFree)) + " hosts that did not respond to ICMP requests")
+
     for ipAdx in ipFree:
-        scan_ports(ipAdx, portsToScan, tcpFree, tcpFound)
+        scan_ports_r(ipAdx, portsToScan, ipFree, ipFound)
+        #scan_ports(ipAdx, portsToScan, ipFree, ipFound)
 
     end = time.time()
     print('Time taken in seconds -', end - start)
