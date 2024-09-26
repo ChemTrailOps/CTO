@@ -7,6 +7,7 @@ import subprocess
 import concurrent.futures
 import socket
 import argparse
+import math
 
 parser = argparse.ArgumentParser(prog='Annoyed IP Scanner', description='Scan a network for unused IP addresses')
 parser.add_argument('-s', help='Subnet in the form of A.B.C', required=True)
@@ -84,6 +85,38 @@ def scan_port(ip, port, tcpFound, tcpFree):
     except Exception as e:
         print(f"Error scanning port {port}: {e}")
 
+##################################################
+# Function print a table of free IPs
+##################################################
+def freePrint(ipPrint, title):
+    rows = math.floor(len(ipPrint)/3)
+    leftOvers = len(ipPrint)%3
+    offset = 0
+    if title == 0:
+        midTitle = '     |            Potentially Free IP Addresses            |'
+    else:
+        midTitle = '     |                  Found IP Addresses                 |'
+    print('     +-----------------+-----------------+-----------------+')
+    print(midTitle)
+    print('     +-----------------+-----------------+-----------------+')
+    if (len(ipPrint) > 3):
+        for x in range(1,rows+1):
+            print('     | ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' | ' + ipPrint[offset+1] + ' ' * (15 - len(ipPrint[offset+1])) + ' | ' + ipPrint[offset+2] + ' ' * (15 - len(ipPrint[offset+2])) + ' |' )
+            print('     +-----------------+-----------------+-----------------+')
+            offset+=3
+    
+    if (leftOvers == 1):
+        print('     | ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' |' + ' ' * 16 + ' |' + ' ' * 16 + ' |')
+
+    if (leftOvers == 2):
+        print('     | ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' | ' + ipPrint[offset+1] + ' ' * (15 - len(ipPrint[offset+1])) + ' |' + ' ' * 16 + ' |' )
+
+    if (leftOvers == 3):
+        print('     | ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' | ' + ipPrint[offset+1] + ' ' * (15 - len(ipPrint[offset+1])) + ' | ' + ipPrint[offset+2] + ' ' * (15 - len(ipPrint[offset+2])) + ' |' )
+
+    print("     +-----------------+-----------------+-----------------+\n\n")
+
+
 if __name__ == "__main__":
     start = time.time()     #for checking the amount of time a scan takes
     subnet = args['s']      #the first three octets of an address separated with dots (1.2.3)
@@ -91,7 +124,8 @@ if __name__ == "__main__":
     last = int(args['l'])   #the last host octet to end with
     ipFound = []            #for recording found IPs
     ipFree = []             #for recording potentially free IPs
-    portsToScan = []        #the list of ports to scan 
+    portsToScan = []        #the list of ports to scan
+    testList = []
 
     parmChecks(first, last, subnet) #check the input parameters, ensure they're all in bounds
     hosts = range(first,last+1)     #build the range of hosts in the host octet
@@ -122,17 +156,13 @@ if __name__ == "__main__":
                 print('%s generated an exception: %s' % (host, e))
 
     print("[+]Ping sweep complete")
-    
-    print("[+]Checking " + str(len(ipFree)) + " hosts that did not respond to ICMP requests")
+    print("[+]Checking " + str(len(ipFree)) + " hosts that did not respond to ICMP requests\n\n")
 
     for ipAdx in ipFree:
         scan_ports(ipAdx, portsToScan, ipFree, ipFound)
 
-    for ip in ipFree:
-        print("Possible free IP address: " + ip)
+    freePrint(ipFound, 1)
+    freePrint(ipFree, 0)
 
     end = time.time()
     print('Time taken in seconds -', end - start)
-
-    print(ipFree)
-    print(ipFound)
