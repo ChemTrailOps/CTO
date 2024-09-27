@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(prog='Annoyed IP Scanner', description='Scan a 
 parser.add_argument('-s', help='Subnet in the form of A.B.C', required=True)
 parser.add_argument('-f', help='Starting node octet, ex: 110 (default is 1)', default=1, required=False)
 parser.add_argument('-l', help='Ending node octet, ex: 155 (default is 255', default=255,  required=False)
-parser.add_argument('-p', help='Ping sweep only, not default', required=False)
+parser.add_argument('-p', help='Ping sweep only, not default', required=False, action='store_true')
 parser.add_argument('-g', help='Port set to scan, default is nmap default eleven', choices=['1000', 'fast', 'seq'], required=False)
 
 args = vars(parser.parse_args())
@@ -145,6 +145,9 @@ if __name__ == "__main__":
                 
     # The first step is to do a ping sweep of the subnet/network. Any IP that responds gets put into the found 
     # list, the ones that don't respond will go on to the free list where they'll be port scanned for further checks
+
+
+    
     print("[+]Starting ping sweep")
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_ping = {executor.submit(pingHost, (subnet+str(host)), ipFree, ipFound): host for host in hosts}
@@ -156,10 +159,12 @@ if __name__ == "__main__":
                 print('%s generated an exception: %s' % (host, e))
 
     print("[+]Ping sweep complete")
-    print("[+]Checking " + str(len(ipFree)) + " hosts that did not respond to ICMP requests\n\n")
 
-    for ipAdx in ipFree:
-        scan_ports(ipAdx, portsToScan, ipFree, ipFound)
+    if args['p'] == False:
+        print("[+]Checking " + str(len(ipFree)) + " hosts that did not respond to ICMP requests\n\n")
+
+        for ipAdx in ipFree:
+            scan_ports(ipAdx, portsToScan, ipFree, ipFound)
 
     freePrint(ipFound, 1)
     freePrint(ipFree, 0)
