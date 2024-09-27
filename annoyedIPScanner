@@ -18,6 +18,11 @@ parser.add_argument('-g', help='Port set to scan, default is nmap default eleven
 
 args = vars(parser.parse_args())
 
+def printHeader():
+    print('\n[*][*][*][*][*][*][*][*][*][*][*][*][*][*][*]')
+    print('[+]  Annoyed IP Scanner - Sean Hall 2024  [+]')
+    print('[*][*][*][*][*][*][*][*][*][*][*][*][*][*][*]\n')
+
 # Test the user input parameters for validity, is the first host less than the last,
 # does the subnet contain valid octets. Output warninigs and stop execution
 def parmChecks(first, last, subnet):
@@ -92,29 +97,39 @@ def freePrint(ipPrint, title):
     rows = math.floor(len(ipPrint)/3)
     leftOvers = len(ipPrint)%3
     offset = 0
+
     if title == 0:
-        midTitle = '     |            Potentially Free IP Addresses            |'
+        midTitle = '     |                     Potentially Free IP Addresses                     |'
+        print("[+] Here are the IPs that did NOT respond to me:\n")
     else:
-        midTitle = '     |                  Found IP Addresses                 |'
-    print('     +-----------------+-----------------+-----------------+')
+        midTitle = '     |                           Found IP Addresses                          |'
+        print("[+] Here are the IPs that responded to me:\n")
+        
+    print('     +-----------------------+-----------------------+-----------------------+')
     print(midTitle)
-    print('     +-----------------+-----------------+-----------------+')
+    print('     +-----------------------+-----------------------+-----------------------+')
+
+    if (len(ipPrint) == 0):
+        print('     |                        No Response From Any IP                        |')
+        print('     +-----------------------+-----------------------+-----------------------+')
+
     if (len(ipPrint) > 3):
         for x in range(1,rows+1):
-            print('     | ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' | ' + ipPrint[offset+1] + ' ' * (15 - len(ipPrint[offset+1])) + ' | ' + ipPrint[offset+2] + ' ' * (15 - len(ipPrint[offset+2])) + ' |' )
-            print('     +-----------------+-----------------+-----------------+')
+            print('     | ' + ' ' * (3 - len(str(offset + 1))) + str(offset + 1) + ' - ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' | ' + ' ' * (3 - len(str(offset + 2))) + str(offset + 2) + ' - ' + ipPrint[offset+1] + ' ' * (15 - len(ipPrint[offset+1])) + ' | ' +	' ' * (3 - len(str(offset + 3))) + str(offset + 3) + ' - ' + ipPrint[offset+2] + ' ' * (15 - len(ipPrint[offset+2])) + ' |' )
+            print('     +-----------------------+-----------------------+-----------------------+')
             offset+=3
     
     if (leftOvers == 1):
-        print('     | ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' |' + ' ' * 16 + ' |' + ' ' * 16 + ' |')
+        print('     | ' + ' ' * (3 - len(str(offset + 1))) + str(offset + 1) + ' - ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' |' + ' ' * 22 + ' |' + ' ' * 22 + ' |')
+        print("     +-----------------------+-----------------------+-----------------------+\n\n")
 
     if (leftOvers == 2):
-        print('     | ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' | ' + ipPrint[offset+1] + ' ' * (15 - len(ipPrint[offset+1])) + ' |' + ' ' * 16 + ' |' )
+        print('     | ' + ' ' * (3 - len(str(offset + 1))) + str(offset + 1) + ' - ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' | ' + ' ' * (3 - len(str(offset + 2))) + str(offset + 2) + ' - ' + ipPrint[offset+1] + ' ' * (15 - len(ipPrint[offset+1])) + ' |' + ' ' * 22 + ' |' )
+        print("     +-----------------------+-----------------------+-----------------------+\n\n")
 
-    if (leftOvers == 3):
-        print('     | ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' | ' + ipPrint[offset+1] + ' ' * (15 - len(ipPrint[offset+1])) + ' | ' + ipPrint[offset+2] + ' ' * (15 - len(ipPrint[offset+2])) + ' |' )
-
-    print("     +-----------------+-----------------+-----------------+\n\n")
+    if (len(ipPrint) == 3):
+        print('     - ' + ' ' * (3 - len(str(offset + 1))) + str(offset + 1) + ' - ' + ipPrint[offset] + ' ' * (15 - len(ipPrint[offset])) + ' | ' + ' ' * (3 - len(str(offset + 2))) + str(offset + 2) + ' - ' + ipPrint[offset+1] + ' ' * (15 - len(ipPrint[offset+1])) + ' | ' +	' ' * (3 - len(str(offset + 3))) + str(offset + 3) + ' - ' + ipPrint[offset+2] + ' ' * (15 - len(ipPrint[offset+2])) + ' |' )
+        print("     +-----------------------+-----------------------+-----------------------+\n\n")
 
 
 if __name__ == "__main__":
@@ -127,6 +142,7 @@ if __name__ == "__main__":
     portsToScan = []        #the list of ports to scan
     testList = []
 
+    printHeader()
     parmChecks(first, last, subnet) #check the input parameters, ensure they're all in bounds
     hosts = range(first,last+1)     #build the range of hosts in the host octet
     subnet+='.'                     #add the last dot to the subnet for building IP addresses
@@ -148,7 +164,7 @@ if __name__ == "__main__":
 
 
     
-    print("[+]Starting ping sweep")
+    print("\n[+]Starting ping sweep\n")
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_ping = {executor.submit(pingHost, (subnet+str(host)), ipFree, ipFound): host for host in hosts}
         for future in concurrent.futures.as_completed(future_to_ping):
@@ -158,7 +174,7 @@ if __name__ == "__main__":
             except Exception as e:
                 print('%s generated an exception: %s' % (host, e))
 
-    print("[+]Ping sweep complete")
+    print("[+]Ping sweep complete\n")
 
     if args['p'] == False:
         print("[+]Checking " + str(len(ipFree)) + " hosts that did not respond to ICMP requests\n\n")
