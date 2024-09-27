@@ -15,9 +15,11 @@ parser.add_argument('-f', help='Starting node octet, ex: 110 (default is 1)', de
 parser.add_argument('-l', help='Ending node octet, ex: 155 (default is 255', default=255,  required=False)
 parser.add_argument('-p', help='Ping sweep only, not default', required=False, action='store_true')
 parser.add_argument('-g', help='Port set to scan, default is nmap default eleven', choices=['1000', 'fast', 'seq'], required=False)
-
 args = vars(parser.parse_args())
 
+####################
+# Print the header
+####################
 def printHeader():
     print('\n[*][*][*][*][*][*][*][*][*][*][*][*][*][*][*]')
     print('[+]  Annoyed IP Scanner - Sean Hall 2024  [+]')
@@ -25,8 +27,10 @@ def printHeader():
     print(' ')
     print('[+]Starting scanner')
 
+##############################################################################################################
 # Test the user input parameters for validity, is the first host less than the last,
 # does the subnet contain valid octets. Output warninigs and stop execution
+##############################################################################################################
 def parmChecks(first, last, subnet):
     if(first > last) or (first < 0) or (last > 255):
         print('[!!!] The first IP in the range (-f) should be greater than zero but less than the last IP value')
@@ -55,8 +59,10 @@ def parmChecks(first, last, subnet):
         print('      than zero or greater than 255.') 
         quit()
 
+##############################################################################################################
 # Pings the host with one ICMP packet, if the text "Lost = 0" is present, the IP is added to the found list
 # otherwise it's added to the free list
+##############################################################################################################
 def pingHost(ipAddx, pingFree, pingFound):
     output = subprocess.run(["ping", "-n", "1", "-w", "100", ipAddx], stdout=subprocess.PIPE) 
     if str(output).find("Lost = 0") >= 0:
@@ -66,10 +72,10 @@ def pingHost(ipAddx, pingFree, pingFound):
 ##################################################
 # Scan ports in a list using multiple threads
 ##################################################
-def scan_ports(ip, ports, tcpFree, tcpFound):
+def scanPorts(ip, ports, tcpFree, tcpFound):
     threads = []
     for port in ports:
-        thread = threading.Thread(target=scan_port, args=(ip, port, tcpFound, tcpFree))
+        thread = threading.Thread(target=scanPort, args=(ip, port, tcpFound, tcpFree))
         threads.append(thread)
         thread.start()
 
@@ -78,7 +84,7 @@ def scan_ports(ip, ports, tcpFree, tcpFound):
 ##################################################
 # Function to scan a single port
 ##################################################
-def scan_port(ip, port, tcpFound, tcpFree):
+def scanPort(ip, port, tcpFound, tcpFree):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(0.1)
@@ -134,6 +140,33 @@ def freePrint(ipPrint, title):
         print("     +-----------------------+-----------------------+-----------------------+")
     print(' ')
 
+##############################################################################################################
+# Ask if the user wants a full port scan
+##############################################################################################################
+def pickListDoFullScan(maxVal):
+    print('\n\nIf you want to do a full scan of all 65535 ports for, you can')
+    print('select an index for that scan. It may take several minutes.')
+    
+    compIndex = ''
+    goodInput = False
+    
+    while(goodInput==False):
+        compIndex = input('\n[+]Enter the index to the left of the IP or 0 to quit: ')
+
+        if(compIndex.isdigit()==False):
+            print('\n[!]Value must be a digit between 1 and ' + str(maxVal) + ', or 0 to quit\n')
+        else:
+            if (int(compIndex) < 0 or int(compIndex) > maxVal):
+                print('\n[!]Value is out of range, must between 1 and ' + str(maxVal) + ', or 0 to quit\n')
+
+            if((int(compIndex) <= maxVal) and (int(compIndex) >= 0)):
+                goodInput = True
+            
+    return compIndex
+    
+##############################################################################################################
+# Entry point
+##############################################################################################################
 if __name__ == "__main__":
     start = time.time()     #for checking the amount of time a scan takes
     subnet = args['s']      #the first three octets of an address separated with dots (1.2.3)
@@ -142,7 +175,9 @@ if __name__ == "__main__":
     ipFound = []            #for recording found IPs
     ipFree = []             #for recording potentially free IPs
     portsToScan = []        #the list of ports to scan
-    testList = []
+    compIndexFullScan = ''
+    portFound = []
+    portFree = []
 
     printHeader()
     parmChecks(first, last, subnet) #check the input parameters, ensure they're all in bounds
@@ -183,10 +218,33 @@ if __name__ == "__main__":
         print("[+]Checking " + str(len(ipFree)) + " hosts that did not respond to ICMP requests\n")
 
         for ipAdx in ipFree:
-            scan_ports(ipAdx, portsToScan, ipFree, ipFound)
+            scanPorts(ipAdx, portsToScan, ipFree, ipFound)
 
     freePrint(ipFound, 1)
     freePrint(ipFree, 0)
 
     end = time.time()
-    print('Time taken in seconds -', end - start)
+    print('Time taken in seconds : ', end - start)
+
+    compIndexFullScan = pickListDoFullScan(len(ipFree))
+    if (int(compIndexFullScan)==0):
+        print('\n\nGoodbye\n\n')
+        exit
+    else:
+        start = time.time()
+        print('\nDoing full scan on ' + ipFree[int(compIndexFullScan)-1])
+        portsToScan = range(1,65535)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=200) as executor:
+            future_to_port = {executor.submit(scanPort, ipFree[int(compIndexFullScan)-1], portToScan, portFree, portFound): portToScan for portToScan in portsToScan}
+            for future in concurrent.futures.as_completed(future_to_port):
+                portToScan = future_to_port[future]
+                try:
+                    data = future.result()
+                except Exception as e:
+                    print('%s generated an exception: %s' % (host, e))
+        end = time.time()
+        print('Time taken in seconds : ', end - start)
+        if(len(portFound)==0):
+            print('\n\n[+]No open ports found')
+        else:
+            print('Got a reply on ' + str(len(portFound)) + ', try another IP')
