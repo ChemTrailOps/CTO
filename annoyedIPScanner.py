@@ -196,7 +196,8 @@ def tcpSweep(ipFreeList, index, portFreeList, portFoundList):
 # otherwise it's added to the free list
 ##############################################################################################################
 def pingHost(ipAddx, pingFree, pingFound):
-    output = subprocess.run(["ping", "-n", "1", "-w", "100", ipAddx], stdout=subprocess.PIPE) 
+    #output = subprocess.run(["ping", "-n", "1", "-w", "100", ipAddx], stdout=subprocess.PIPE)
+    output = subprocess.run(["ping", "-n", "3", ipAddx], stdout=subprocess.PIPE) 
     if str(output).find("Lost = 0") >= 0:
         pingFound.append(ipAddx)
     else:
@@ -222,7 +223,7 @@ def scanPorts(ip, ports, tcpFree, tcpFound):
 def scanPort(ip, port, tcpFound, tcpFree):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.1)
+        #sock.settimeout(0.1)
         result = sock.connect_ex((ip, port))
         if result == 0:
             if ip not in tcpFound:  #don't add an IP that's already been added
